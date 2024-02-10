@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:pos_mobile/constant/color.dart';
+import 'package:pos_mobile/service/auth.dart';
 
 class FormRegister extends StatefulWidget {
   const FormRegister({Key? key}) : super(key: key);
@@ -11,22 +14,52 @@ class FormRegister extends StatefulWidget {
 class _FormRegisterState extends State<FormRegister> {
   final _formKey = GlobalKey<FormState>();
 
-  final shopnameController = TextEditingController();
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
-  final confirmationPasswordController = TextEditingController();
+  final _shopnameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmationPasswordController = TextEditingController();
 
-  void handleLogin() {
+  bool _showPassword = false;
+  bool _showConfirmationPassword = false;
+
+  Future<void> handleRegister() async {
     if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Processing Data')));
+      ScaffoldFeatureController<SnackBar, SnackBarClosedReason> snackBar =
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Processing Data'),
+      ));
+
+      final response = await AuthService.register(
+          email: _emailController.text,
+          password: _passwordController.text,
+          confirmationPassword: _confirmationPasswordController.text,
+          shopname: _shopnameController.text);
+
+      if (!context.mounted) return;
+
+      if (response.statusCode == 200) {
+        snackBar.close();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Register success"),
+          backgroundColor: Colors.green,
+        ));
+        Navigator.pop(context);
+      } else {
+        final message = jsonDecode(response.body)["message"][0]["message"];
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+        ));
+      }
     }
   }
 
   @override
   void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmationPasswordController.dispose();
+    _shopnameController.dispose();
     super.dispose();
   }
 
@@ -48,7 +81,7 @@ class _FormRegisterState extends State<FormRegister> {
                     child: Text("Shop Name"),
                   ),
                   TextFormField(
-                    controller: shopnameController,
+                    controller: _shopnameController,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(50),
@@ -83,7 +116,7 @@ class _FormRegisterState extends State<FormRegister> {
                       child: Text("Email"),
                     ),
                     TextFormField(
-                      controller: emailController,
+                      controller: _emailController,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(50),
@@ -113,80 +146,98 @@ class _FormRegisterState extends State<FormRegister> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.only(left: 20),
-                      child: Text("Password"),
-                    ),
-                    TextFormField(
-                      controller: passwordController,
-                      validator: (value) {
-                        if (value!.isEmpty) {
-                          return 'Please enter your password';
-                        }
-                        return null;
-                      },
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(50),
-                            borderSide: const BorderSide(color: greyColor)),
-                        focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(50),
-                            borderSide: const BorderSide(color: greyColor)),
-                        contentPadding:
-                            const EdgeInsets.only(left: 20, right: 20),
-                        hintText: 'Enter your password',
-                        labelStyle: const TextStyle(
-                          color: blackColor,
-                        ),
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(left: 20),
+                        child: Text("Password"),
                       ),
-                      cursorColor: const Color(0XFF6E6D7A),
-                    )
-                  ],
-                )),
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: !_showPassword,
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return 'Please enter your password';
+                          }
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(50),
+                              borderSide: const BorderSide(color: greyColor)),
+                          focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(50),
+                              borderSide: const BorderSide(color: greyColor)),
+                          contentPadding:
+                              const EdgeInsets.only(left: 20, right: 20),
+                          hintText: 'Enter your password',
+                          labelStyle: const TextStyle(
+                            color: blackColor,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(!_showPassword
+                                ? Icons.visibility
+                                : Icons.visibility_off),
+                            onPressed: () => setState(() {
+                              _showPassword = !_showPassword;
+                            }),
+                          ),
+                        ),
+                        cursorColor: const Color(0XFF6E6D7A),
+                      )
+                    ],
+                  )),
               Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.only(left: 20),
-                      child: Text("Confirmation Password"),
-                    ),
-                    TextFormField(
-                      controller: confirmationPasswordController,
-                      validator: (value) {
-                        if (value!.isEmpty) {
-                          return 'Please enter your confirmation password';
-                        }
-
-                        if (value != passwordController.text) {
-                          return 'Password does not match';
-                        }
-
-                        return null;
-                      },
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(50),
-                            borderSide: const BorderSide(color: greyColor)),
-                        focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(50),
-                            borderSide: const BorderSide(color: greyColor)),
-                        contentPadding:
-                            const EdgeInsets.only(left: 20, right: 20),
-                        hintText: 'Enter your confirmation password',
-                        labelStyle: const TextStyle(
-                          color: blackColor,
-                        ),
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(left: 20),
+                        child: Text("Confirmation Password"),
                       ),
-                      cursorColor: const Color(0XFF6E6D7A),
-                    )
-                  ],
-                )),
+                      TextFormField(
+                        controller: _confirmationPasswordController,
+                        obscureText: !_showConfirmationPassword,
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return 'Please enter your confirmation password';
+                          }
+
+                          if (value != _passwordController.text) {
+                            return 'Password does not match';
+                          }
+
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(50),
+                                borderSide: const BorderSide(color: greyColor)),
+                            focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(50),
+                                borderSide: const BorderSide(color: greyColor)),
+                            contentPadding:
+                                const EdgeInsets.only(left: 20, right: 20),
+                            hintText: 'Enter your confirmation password',
+                            labelStyle: const TextStyle(
+                              color: blackColor,
+                            ),
+                            suffixIcon: IconButton(
+                              icon: Icon(!_showConfirmationPassword
+                                  ? Icons.visibility
+                                  : Icons.visibility_off),
+                              onPressed: () => setState(() {
+                                _showConfirmationPassword =
+                                    !_showConfirmationPassword;
+                              }),
+                            )),
+                        cursorColor: const Color(0XFF6E6D7A),
+                      )
+                    ],
+                  )),
               Padding(
                 padding: const EdgeInsets.only(top: 10),
                 child: SizedBox(
@@ -196,7 +247,7 @@ class _FormRegisterState extends State<FormRegister> {
                     style: const ButtonStyle(
                         backgroundColor:
                             MaterialStatePropertyAll<Color>(blackColor)),
-                    onPressed: handleLogin,
+                    onPressed: handleRegister,
                     child: const Text(
                       "Join",
                       style: TextStyle(

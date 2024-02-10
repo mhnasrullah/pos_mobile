@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:pos_mobile/constant/color.dart';
+import 'package:pos_mobile/service/auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FormLogin extends StatefulWidget {
   const FormLogin({Key? key}) : super(key: key);
@@ -10,22 +14,52 @@ class FormLogin extends StatefulWidget {
 
 class _FormLoginState extends State<FormLogin> {
   final _formKey = GlobalKey<FormState>();
+  final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
 
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
 
-  void handleLogin() {
+  void handleLogin() async {
+    ScaffoldFeatureController<SnackBar, SnackBarClosedReason> snackBar =
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Processing Data'),
+    ));
+
     if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Processing Data')));
-      Navigator.pushReplacementNamed(context, "/main");
+      final response = await AuthService.login(
+          email: _emailController.text, password: _passwordController.text);
+
+      if (!context.mounted) return;
+
+      snackBar.close();
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body)["data"];
+
+        await (await _prefs).setString('token', data["token"]);
+        await (await _prefs).setString(
+            "data",
+            jsonEncode({
+              "email": data["email"],
+              "id": data["id"],
+              "shopname": data["shopname"]
+            }));
+
+        if (!context.mounted) return;
+        Navigator.pushReplacementNamed(context, "/main");
+      } else {
+        final message = jsonDecode(response.body)["message"][0]["message"];
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+        ));
+      }
     }
   }
 
   @override
   void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -47,7 +81,7 @@ class _FormLoginState extends State<FormLogin> {
                     child: Text("Email"),
                   ),
                   TextFormField(
-                    controller: emailController,
+                    controller: _emailController,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(50),
@@ -85,7 +119,8 @@ class _FormLoginState extends State<FormLogin> {
                       child: Text("Password"),
                     ),
                     TextFormField(
-                      controller: passwordController,
+                      controller: _passwordController,
+                      obscureText: true,
                       validator: (value) {
                         if (value!.isEmpty) {
                           return 'Please enter your password';

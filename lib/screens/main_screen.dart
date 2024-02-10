@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pos_mobile/constant/color.dart';
+import 'package:pos_mobile/tabs/catalog.dart';
 import 'package:pos_mobile/widget/appbar.dart';
 
 class MainScreen extends StatefulWidget {
@@ -13,7 +14,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _widgetOptions = <Widget>[
-    const Text('Home'),
+    const Catalog(),
     const Text('Cart'),
     const Text('Profile'),
   ];
